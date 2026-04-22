@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────
+   Design tokens — Random Musings
+   Colors use OKLCH. Two variable sets:
+   1. Semantic CSS vars on :root (for direct `var(--token)` use)
+   2. Tailwind v4 @theme tokens (generates `bg-cream`, `text-ink`, etc.)
+   ───────────────────────────────────────────────── */
+
+:root {
+  /* Surfaces */
+  --bg:           oklch(97% 0.012 60);
+  --bg2:          oklch(94% 0.015 60);
+  --card:         oklch(99% 0.008 60);
+
+  /* Text */
+  --text:         oklch(18% 0.015 50);
+  --text-mid:     oklch(42% 0.012 50);
+  --text-light:   oklch(62% 0.01 50);
+
+  /* Accents — indigo, to match the Claude design prototype default. */
+  --accent:       oklch(50% 0.14 270);
+  --accent-light: oklch(93% 0.04 270);
+  --sage:         oklch(56% 0.09 155);
+  --sage-light:   oklch(93% 0.03 155);
+
+  /* Borders */
+  --border:       oklch(88% 0.012 60);
+}
+
+@theme inline {
+  /* Colors → utilities like `bg-cream`, `text-ink`, `bg-accent`. */
+  --color-cream:        var(--bg);
+  --color-cream-dark:   var(--bg2);
+  --color-card:         var(--card);
+  --color-ink:          var(--text);
+  --color-ink-mid:      var(--text-mid);
+  --color-ink-light:    var(--text-light);
+  --color-accent:       var(--accent);
+  --color-accent-soft:  var(--accent-light);
+  --color-sage:         var(--sage);
+  --color-sage-soft:    var(--sage-light);
+  --color-rule:         var(--border);
+
+  /* Typography — CSS vars filled by next/font in layout.tsx */
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-sans:  var(--font-dm-sans), system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Container helpers — reused across sections (values from README §Spacing). */
+.u-container        { max-width: 1200px; margin: 0 auto; padding: 0 clamp(24px, 5vw, 80px); }
+.u-container-narrow { max-width: 680px;  margin: 0 auto; padding: 0 clamp(24px, 5vw, 80px); }
