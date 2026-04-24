@@ -42,7 +42,7 @@ function readPosts(): Post[] {
       isoDate,
       title: require(filename, 'title', data.title),
       date: formatDate(isoDate),
-      slug: require(filename, 'slug', data.slug),
+      slug: filename.replace(/\.md$/, ''),
       tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
       excerpt: require(filename, 'excerpt', data.excerpt),
       content: content.trim(),

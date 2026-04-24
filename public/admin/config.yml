@@ -18,7 +18,6 @@ collections:
     fields:
       - { label: Title, name: title, widget: string }
       - { label: Publish Date, name: date, widget: datetime, format: YYYY-MM-DD, date_format: YYYY-MM-DD, time_format: false }
-      - { label: Slug, name: slug, widget: string }
       - { label: Tags, name: tags, widget: list }
       - { label: Excerpt, name: excerpt, widget: text }
       - { label: Body, name: body, widget: markdown }
