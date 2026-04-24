@@ -13,13 +13,17 @@ export type Post = {
 
 const postsDir = path.join(process.cwd(), 'content/posts');
 
-function formatDate(isoDate: string | Date): string {
-  const d = isoDate instanceof Date
-    ? isoDate
-    : new Date(`${isoDate}T00:00:00Z`);
+function formatDate(isoDate: string): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
   return d.toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
   });
+}
+
+function require(filename: string, field: string, value: unknown): string {
+  if (typeof value !== 'string' || !value.trim())
+    throw new Error(`${filename}: missing or empty frontmatter field '${field}'`);
+  return value;
 }
 
 let _cache: Post[] | null = null;
@@ -30,17 +34,17 @@ function readPosts(): Post[] {
   const parsed = files.map(filename => {
     const raw = fs.readFileSync(path.join(postsDir, filename), 'utf-8');
     const { data, content } = matter(raw);
-    const rawDate = data.date as string | Date;
+    const rawDate = data.date;
     const isoDate = rawDate instanceof Date
       ? rawDate.toISOString().split('T')[0]
-      : String(rawDate);
+      : require(filename, 'date', rawDate);
     return {
       isoDate,
-      title: data.title as string,
+      title: require(filename, 'title', data.title),
       date: formatDate(isoDate),
-      slug: data.slug as string,
-      tags: (data.tags as string[]) ?? [],
-      excerpt: data.excerpt as string,
+      slug: require(filename, 'slug', data.slug),
+      tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+      excerpt: require(filename, 'excerpt', data.excerpt),
       content: content.trim(),
     };
   });
