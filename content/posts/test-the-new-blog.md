@@ -15,8 +15,4 @@ excerpt: >-
 
   The New York Times believes that great journalism has the power to make each reader’s life richer and more fulfilling, and all of society stronger and more just.
 ---
-**THIS IS TO CHECK THE FORMAT**
-
-> # **Checking another format**
-
-* **The New York Times believes that great journalism has the power to make each reader’s life richer and more fulfilling, and all of society stronger and more just.**
+**THIS IS THE CLOSING**
