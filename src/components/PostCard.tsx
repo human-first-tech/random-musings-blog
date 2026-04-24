@@ -38,7 +38,7 @@ function GridCard({ post }: { post: Post }) {
       className="group relative flex flex-col rounded-[6px] border border-rule bg-card px-9 py-8 transition-colors hover:bg-white"
     >
       <div className="mb-3 text-[0.68rem] font-medium tracking-[0.08em] text-ink-light">
-        Essay {String(post.id).padStart(2, "0")} · {shortDate}
+        {shortDate}
       </div>
       <h3 className="mb-2.5 font-serif text-[1.05rem] font-medium leading-[1.25] tracking-[-0.02em] text-ink">
         {post.title}

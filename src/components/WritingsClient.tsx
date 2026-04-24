@@ -83,7 +83,7 @@ export function WritingsClient({
             Try a different search or tag
           </div>
         ) : (
-          filtered.map((p) => <PostCard key={p.id} post={p} />)
+          filtered.map((p) => <PostCard key={p.slug} post={p} />)
         )}
       </div>
     </>

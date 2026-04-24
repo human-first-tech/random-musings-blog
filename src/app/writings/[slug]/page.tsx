@@ -5,7 +5,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { SubscribeSection } from "@/components/SubscribeSection";
 import {
-  BLOG_POSTS,
+  getAllPosts,
   getAdjacentPosts,
   getPostBySlug,
   type Post,
@@ -15,7 +15,7 @@ type RouteParams = { slug: string };
 type Props = { params: Promise<RouteParams> };
 
 export function generateStaticParams(): RouteParams[] {
-  return BLOG_POSTS.map((p) => ({ slug: p.slug }));
+  return getAllPosts().map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

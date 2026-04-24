@@ -25,7 +25,7 @@ export function NotebookGrid() {
 
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">
           {preview.map((p) => (
-            <PostCard key={p.id} post={p} />
+            <PostCard key={p.slug} post={p} />
           ))}
         </div>
 

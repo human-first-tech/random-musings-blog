@@ -10,7 +10,7 @@ export function FeaturedGrid() {
         <SectionLabel>Fresh off the pen</SectionLabel>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.2fr_1fr_1fr]">
           {posts.map((p) => (
-            <PostCard key={p.id} post={p} variant="featured" />
+            <PostCard key={p.slug} post={p} variant="featured" />
           ))}
         </div>
       </div>

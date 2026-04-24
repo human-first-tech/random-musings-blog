@@ -1,7 +1,7 @@
-import { BLOG_POSTS } from "@/lib/posts";
+import { getAllPosts } from "@/lib/posts";
 
 export function Hero() {
-  const count = BLOG_POSTS.length;
+  const count = getAllPosts().length;
 
   return (
     <section className="border-b border-rule pt-[clamp(72px,10vw,120px)] pb-[clamp(60px,8vw,96px)]">
