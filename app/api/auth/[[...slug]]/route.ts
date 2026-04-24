@@ -24,11 +24,17 @@ export async function GET(
     if (!token) return new NextResponse(`Auth error: ${error ?? 'no token'}`, { status: 400 });
 
     const payload = Buffer.from(JSON.stringify({ token, provider: 'github' })).toString('base64');
+    const origin = new URL(SITE_URL).origin;
     const html = `<!DOCTYPE html><html><body><script>
 (function() {
+  var origin = ${JSON.stringify(origin)};
   var data = JSON.parse(atob(${JSON.stringify(payload)}));
   var msg = 'authorization:github:success:' + JSON.stringify(data);
-  function send(e) { window.opener.postMessage(msg, e.origin); window.removeEventListener('message', send); }
+  function send(e) {
+    if (e.origin !== origin) return;
+    window.opener.postMessage(msg, origin);
+    window.removeEventListener('message', send);
+  }
   window.addEventListener('message', send, false);
   window.opener.postMessage('authorizing:github', '*');
 })();
