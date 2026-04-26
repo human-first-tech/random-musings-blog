@@ -1,7 +1,7 @@
 import { getAllPosts } from "@/lib/posts";
 
-export function Hero() {
-  const count = getAllPosts().length;
+export async function Hero() {
+  const count = (await getAllPosts()).length;
 
   return (
     <section className="border-b border-rule pt-[clamp(72px,10vw,120px)] pb-[clamp(60px,8vw,96px)]">

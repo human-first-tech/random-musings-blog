@@ -6,6 +6,8 @@ import { AboutSection } from "@/components/AboutSection";
 import { SubscribeSection } from "@/components/SubscribeSection";
 import { Footer } from "@/components/Footer";
 
+export const revalidate = 60;
+
 export default function Home() {
   return (
     <>

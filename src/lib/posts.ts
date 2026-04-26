@@ -1,69 +1,116 @@
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
+/**
+ * Public posts API — backed by Notion.
+ *
+ * All exports preserve the same shape and names as the previous markdown-backed
+ * implementation. The only behavioral change is they are now async.
+ *
+ * Page components and other callers should `await` these calls.
+ */
+
+import { cache } from "react";
+import {
+  fetchAllPostsFromNotion,
+  fetchBlocksForPost,
+  blocksToPlainText,
+  type NotionBlock,
+  type RawPost,
+} from "./notion";
 
 export type Post = {
   title: string;
-  date: string;
+  date: string; // formatted for display, e.g. "December 21, 2021"
+  isoDate: string; // YYYY-MM-DD, used for RSS, sitemap, sorting
   slug: string;
+  /**
+   * For backwards-compat with existing components:
+   * `tags[0]` is the primary Category, the rest are Sub-tags.
+   */
   tags: string[];
+  category: string;
   excerpt: string;
+  /**
+   * Plain-text representation of the article body, used by the search filter
+   * on /writings. The rendered article uses the `blocks` field instead.
+   */
   content: string;
+  blocks: NotionBlock[];
+  coverUrl?: string;
+  pageId: string;
 };
 
-const postsDir = path.join(process.cwd(), 'content/posts');
+// ─────────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────────
 
 function formatDate(isoDate: string): string {
   const d = new Date(`${isoDate}T00:00:00Z`);
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
   });
 }
 
-function require(filename: string, field: string, value: unknown): string {
-  if (typeof value !== 'string' || !value.trim())
-    throw new Error(`${filename}: missing or empty frontmatter field '${field}'`);
-  return value;
+/**
+ * Fetch raw posts + the body blocks for each, in parallel.
+ * Memoized per-request via React cache so multiple components can call this
+ * without duplicate API calls.
+ */
+const getAllPostsHydrated = cache(async (): Promise<Post[]> => {
+  const raw = await fetchAllPostsFromNotion();
+
+  // Hydrate every post with its body blocks (needed for search + render).
+  // Done in parallel; on a 26-post blog this is ~1 API request per post.
+  const hydrated = await Promise.all(
+    raw.map(async (p) => {
+      const blocks = await fetchBlocksForPost(p.pageId);
+      return rawToPost(p, blocks);
+    }),
+  );
+
+  return hydrated;
+});
+
+function rawToPost(raw: RawPost, blocks: NotionBlock[]): Post {
+  return {
+    pageId: raw.pageId,
+    title: raw.title,
+    slug: raw.slug,
+    isoDate: raw.isoDate,
+    date: formatDate(raw.isoDate),
+    category: raw.category,
+    tags: [raw.category, ...raw.subTags],
+    excerpt: raw.excerpt,
+    content: blocksToPlainText(blocks),
+    blocks,
+    coverUrl: raw.coverUrl,
+  };
 }
 
-let _cache: Post[] | null = null;
+// ─────────────────────────────────────────────────
+// Public API — same shape as before, now async
+// ─────────────────────────────────────────────────
 
-function readPosts(): Post[] {
-  if (_cache) return _cache;
-  const files = fs.readdirSync(postsDir).filter(f => f.endsWith('.md'));
-  const parsed = files.map(filename => {
-    const raw = fs.readFileSync(path.join(postsDir, filename), 'utf-8');
-    const { data, content } = matter(raw);
-    const rawDate = data.date;
-    const isoDate = rawDate instanceof Date
-      ? rawDate.toISOString().split('T')[0]
-      : require(filename, 'date', rawDate);
-    return {
-      isoDate,
-      title: require(filename, 'title', data.title),
-      date: formatDate(isoDate),
-      slug: filename.replace(/\.md$/, ''),
-      tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
-      excerpt: require(filename, 'excerpt', data.excerpt),
-      content: content.trim(),
-    };
-  });
-  parsed.sort((a, b) => (a.isoDate > b.isoDate ? -1 : 1));
-  _cache = parsed.map(({ isoDate: _, ...p }) => p as Post);
-  return _cache;
+export async function getAllPosts(): Promise<Post[]> {
+  return getAllPostsHydrated();
 }
 
-export function getAllPosts(): Post[] { return readPosts(); }
-
-export function getPostBySlug(slug: string): Post | undefined {
-  return readPosts().find(p => p.slug === slug);
+export async function getPostBySlug(slug: string): Promise<Post | undefined> {
+  const all = await getAllPostsHydrated();
+  return all.find((p) => p.slug === slug);
 }
 
-export function getFeaturedPosts(n = 3): Post[] { return readPosts().slice(0, n); }
+export async function getFeaturedPosts(n = 3): Promise<Post[]> {
+  const all = await getAllPostsHydrated();
+  return all.slice(0, n);
+}
 
-export function getAdjacentPosts(slug: string): { prev: Post | null; next: Post | null } {
-  const posts = readPosts();
-  const idx = posts.findIndex(p => p.slug === slug);
+export async function getAdjacentPosts(
+  slug: string,
+): Promise<{ prev: Post | null; next: Post | null }> {
+  const posts = await getAllPostsHydrated();
+  const idx = posts.findIndex((p) => p.slug === slug);
   if (idx === -1) return { prev: null, next: null };
   return {
     prev: idx > 0 ? posts[idx - 1] : null,
@@ -71,16 +118,26 @@ export function getAdjacentPosts(slug: string): { prev: Post | null; next: Post 
   };
 }
 
-export function getAllTags(): string[] {
+export async function getAllTags(): Promise<string[]> {
   const set = new Set<string>();
-  readPosts().forEach(p => p.tags.forEach(t => set.add(t)));
+  const posts = await getAllPostsHydrated();
+  posts.forEach((p) => p.tags.forEach((t) => set.add(t)));
   return Array.from(set).sort();
 }
 
-export function getTopTags(n = 8): string[] {
+/**
+ * Top N tags by post count.
+ * Counts the primary `category` only (not sub-tags) — the filter row on
+ * /writings should reflect the controlled vocabulary, not freeform sub-tags.
+ */
+export async function getTopTags(n = 8): Promise<string[]> {
   const counts = new Map<string, number>();
-  readPosts().forEach(p => p.tags.forEach(t => counts.set(t, (counts.get(t) ?? 0) + 1)));
+  const posts = await getAllPostsHydrated();
+  posts.forEach((p) => {
+    counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
+  });
   return Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, n).map(([tag]) => tag);
+    .slice(0, n)
+    .map(([tag]) => tag);
 }

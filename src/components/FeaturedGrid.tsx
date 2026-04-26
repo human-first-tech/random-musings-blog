@@ -2,8 +2,8 @@ import { PostCard } from "./PostCard";
 import { SectionLabel } from "./SectionLabel";
 import { getFeaturedPosts } from "@/lib/posts";
 
-export function FeaturedGrid() {
-  const posts = getFeaturedPosts(3);
+export async function FeaturedGrid() {
+  const posts = await getFeaturedPosts(3);
   return (
     <section className="border-b border-rule py-[clamp(56px,7vw,80px)]">
       <div className="u-container">

@@ -5,14 +5,15 @@ import { AboutSection } from "@/components/AboutSection";
 import { WritingsClient } from "@/components/WritingsClient";
 import { getAllPosts, getTopTags } from "@/lib/posts";
 
+export const revalidate = 60;
+
 export const metadata = {
   title: "Writings — Random Musings",
-  description: "Browse all 26+ essays. Search by title, excerpt, or tag.",
+  description: "Browse all essays. Search by title, excerpt, or content.",
 };
 
-export default function WritingsPage() {
-  const posts = getAllPosts();
-  const tags = getTopTags(8);
+export default async function WritingsPage() {
+  const [posts, tags] = await Promise.all([getAllPosts(), getTopTags(10)]);
 
   return (
     <>
