@@ -1,6 +1,6 @@
 # Random Musings — session handoff
 
-A warm, editorial personal blog for a writer. Rebuilt from a high-fidelity HTML design prototype into a production Next.js site. Live, deployed, 26 essays seeded as static data.
+A warm, editorial personal blog for a writer. Built on Next.js, **content lives in Notion**, and the writer publishes by flipping a Status toggle in a Notion database.
 
 ## Live URLs
 
@@ -19,37 +19,75 @@ Domain: Namecheap-registered `d-island-girl.com`, DNS pointing to Vercel. `www.d
 - **Language:** TypeScript
 - **Styling:** Tailwind v4 (CSS-based config via `@theme` — no `tailwind.config.js`)
 - **Fonts:** Playfair Display + DM Sans via `next/font`
-- **Data:** Static TS module (`src/lib/posts.ts`) — no CMS yet
+- **CMS:** Notion (database = source of truth, fetched via `@notionhq/client`)
+- **Caching:** ISR (`revalidate = 60` per page) + on-demand revalidation via `/api/revalidate`
+
+## Architecture at a glance
+
+```
+Notion "Writings" database  ──fetch──▶  src/lib/notion.ts  ──hydrate──▶  src/lib/posts.ts  ──consume──▶  Pages & components
+                                                                                                            │
+                                                            on publish, Notion automation ───────POST─────▶ /api/revalidate
+                                                                                                            │
+                                                                                            (revalidatePath flushes ISR cache)
+```
+
+The `Post` type and helper signatures match what was there before the CMS migration — only the implementation changed. Page/component layer is largely untouched.
 
 ## State as of handoff
 
-### ✅ Done
+### ✅ Done in this session (v0.2 — Notion CMS)
+- `src/lib/notion.ts` — Notion API client, type-safe property extractors, request-deduplicated fetchers
+- `src/lib/posts.ts` — public API (now async) backed by Notion. Same exports as before.
+- `src/components/NotionRenderer.tsx` — renders Notion blocks (paragraph, headings, quote, lists, image, callout, code, divider) with the site's existing typography
+- `src/app/api/revalidate/route.ts` — secret-gated webhook for on-demand cache busting
+- `src/app/rss.xml/route.ts` — RSS 2.0 feed
+- `src/app/sitemap.ts` — dynamic sitemap from Notion
+- `src/app/opengraph-image.tsx` + `src/app/writings/[slug]/opengraph-image.tsx` — dynamic OG images via `next/og`
+- `scripts/import-to-notion.ts` — one-shot migration from `content/posts/*.md` → Notion (idempotent, supports limit + draft mode)
+- `docs/notion-schema.md` — exact schema spec for the Notion database
+- `docs/deployment.md` — env var setup + Vercel deployment steps
+- `docs/pilot-plan.md` — 3-article cutover plan with comparison checklist
+
+### ✅ Done previously (v0.1 — markdown era)
 - Home (`/`): hero, "Fresh off the pen" featured grid, "From the Notebook" 6-post grid, about, subscribe, footer
-- Writings (`/writings`): live search + top-8 derived tag filters + all 26 cards
-- Article (`/writings/[slug]`): 26 statically pre-rendered pages (SSG), pull-quote, `**bold**` parsing, prev/next nav
-- Custom 404 for unknown slugs
+- Writings (`/writings`): live search + top-N category filters
+- Article (`/writings/[slug]`): static + ISR, pull-quote, prev/next nav, custom 404
 - Indigo accent color (matches the original design prototype's default)
 - Design tokens centralized — changing the accent is one line in `globals.css`
-- Shipped to production with custom domain + auto-deploy on `git push`
+- Custom domain on Vercel + auto-deploy on push to `main`
 
 ### ⏳ Stubbed / in progress
 - **`src/components/SubscribeSection.tsx` — `handleSubmit`** is a placeholder. It validates `email.includes('@')` and fakes success. No real backend. Look for the `▼▼▼ REPLACE THIS BLOCK ▼▼▼` marker. Decisions to make: validation strictness, provider (Resend/Mailchimp), error granularity.
+- **`src/app/api/auth/[[...slug]]/route.ts`** — leftover GitHub OAuth handler from a previous Decap CMS attempt. Not wired into anything. Safe to delete; left for now to avoid scope creep.
+- **`content/posts/*.md`** — markdown source-of-truth from v0.1. Kept as durable backup post-migration. Plan to remove ~30 days after stable Notion operation (see `docs/pilot-plan.md`).
 
-### 🔜 Not started (natural next steps, in priority order)
-1. **CMS** so the writer can publish without editing code. Recommended: **Decap CMS** (Markdown-in-Git, writer edits at `/admin`, commits auto-deploy). Alternatives: Sanity, MDX-only.
-2. **Real subscribe backend** — wire `handleSubmit` to Resend or Mailchimp. Create `app/api/subscribe/route.ts` as a server action.
-3. **Favicon, OG images, sitemap, RSS feed** — polish.
+### 🔜 Not started
+1. **Real subscribe backend** — wire `handleSubmit` to Resend or Mailchimp.
+2. **Categorize sage vs accent tag colors** — `PostCard.tsx`'s `CardTag` regex `/sage|nature|environment/` no longer matches any post (categories were consolidated). Currently all tags render in accent. To re-introduce visual variety, update the regex or move color decision into the data layer.
+3. **Notion image proxy** — none of the current 26 posts have images, but Notion-hosted images use signed URLs that expire ~1hr. Once she starts including images, consider proxying through `next/image` loader with a custom domain or moving to a CDN.
 
 ## Where things live
 
 | Concern | File |
 |---|---|
-| Post data + helpers (`getAllPosts`, `getPostBySlug`, `getAdjacentPosts`, `getTopTags`) | `src/lib/posts.ts` |
-| Design tokens (OKLCH colors, fonts) | `src/app/globals.css` (`:root` for semantic vars, `@theme inline` for Tailwind utilities) |
+| Notion client + raw fetchers | `src/lib/notion.ts` |
+| Public posts API (`getAllPosts`, `getPostBySlug`, `getAdjacentPosts`, `getTopTags`) | `src/lib/posts.ts` |
+| Article body renderer | `src/components/NotionRenderer.tsx` |
+| Revalidation webhook | `src/app/api/revalidate/route.ts` |
+| RSS / Sitemap / OG | `src/app/rss.xml/route.ts`, `src/app/sitemap.ts`, `src/app/opengraph-image.tsx`, `src/app/writings/[slug]/opengraph-image.tsx` |
+| Migration script | `scripts/import-to-notion.ts` |
+| Design tokens (OKLCH colors, fonts) | `src/app/globals.css` |
 | Fonts | `src/app/layout.tsx` (next/font) |
-| Pages | `src/app/page.tsx`, `src/app/writings/page.tsx`, `src/app/writings/[slug]/page.tsx`, `src/app/writings/[slug]/not-found.tsx` |
+| Pages | `src/app/page.tsx`, `src/app/writings/page.tsx`, `src/app/writings/[slug]/page.tsx` |
 | Components | `src/components/` |
-| Design reference (HTML prototype) | `../Design/design_random_musings/Random Musings.html` — **NOT in this repo** (lives in sibling directory) |
+| Notion schema spec | `docs/notion-schema.md` |
+| Deployment + env var guide | `docs/deployment.md` |
+| Pilot rollout plan | `docs/pilot-plan.md` |
+
+## Environment variables
+
+See `.env.example` for the canonical list. Required: `NOTION_TOKEN`, `NOTION_DATABASE_ID`, `REVALIDATE_SECRET`. Set in Vercel for Production + Preview + Development.
 
 ## Changing the accent color
 
@@ -68,22 +106,25 @@ Prototype-documented alternatives:
 ## Commands
 
 ```bash
-npm run dev     # Dev server → http://localhost:3000
-npm run build   # Production build — pre-renders all 26 article pages
-npm run lint    # ESLint
+npm run dev               # Dev server → http://localhost:3000 (requires .env.local with NOTION_TOKEN)
+npm run build             # Production build — pre-renders article pages from Notion at build time
+npm run lint              # ESLint
+npm run import:notion     # One-shot migration of content/posts/*.md → Notion. See docs/deployment.md.
 ```
 
 ## Design decisions worth knowing
 
-- **Posts are a typed TS module, not a CMS yet.** `src/lib/posts.ts` exports `BLOG_POSTS: Post[]` plus helpers. When swapping to Decap/Sanity, only the helpers need to change — page components don't.
-- **Filter tags are derived, not hardcoded.** `getTopTags(8)` counts frequency across all posts. Add posts with new tags → filter row updates on next build.
-- **Prototype's `localStorage` view state was intentionally dropped.** URLs (`/writings/[slug]`) are the source of truth — refresh-safe, shareable, back-button-friendly.
-- **Article prev/next walks source-array order (newest→oldest).** "Next" = older post. Matches prototype. To flip so "Next" = newer, reverse the slice in `getAdjacentPosts` in `src/lib/posts.ts`.
+- **Notion is the single source of truth.** No fallback to markdown at runtime. Markdown files in `content/posts/` are kept only as a historical backup; the deployed site does not read them.
+- **ISR + on-demand revalidation.** Pages cache for 60s; the webhook flushes specific paths instantly. This means at most a 60s delay between her hitting Publish in Notion and the site updating, even without the webhook configured.
+- **`tags[0]` convention preserved.** Components display the primary category as the tag chip. The `Post.tags` array now contains `[category, ...subTags]` for backwards-compat with `WritingsClient`'s `tags.includes(activeTag)` filter.
+- **Filter chips show categories, not sub-tags.** `getTopTags()` now counts only the primary `Category` field (a Select), not the `Sub-tags` multi-select. This keeps the filter row scannable.
+- **Migration script is idempotent.** Safe to re-run; existing slugs are skipped unless `IMPORT_OVERWRITE=true`.
 - **Tailwind v4 config lives in CSS** (`@theme` block in `globals.css`). No `tailwind.config.js`. Utilities like `bg-accent`, `text-ink`, `font-serif` are generated from those tokens.
-- **Indigo over terracotta:** README originally specified terracotta, but the prototype's runtime default (via its `TWEAK_DEFAULTS.accentColor`) was indigo. User confirmed they preferred the indigo version from the prototype.
 
 ## Known caveats
 
+- **Build now requires Notion access.** `npm run build` calls Notion at build time. CI must have `NOTION_TOKEN` + `NOTION_DATABASE_ID` env vars (already true on Vercel if env vars are configured).
+- **Notion API rate limits.** 3 req/sec average. Personal blog traffic won't get close, but bear in mind for any scripts.
 - **Initial commit author** is `Random Musings <noreply@example.com>` because no global `git config user.name/email` was set. Before your next commit, run:
   ```bash
   git config --global user.name "Your Name"
@@ -94,4 +135,4 @@ npm run lint    # ESLint
 
 ## If a future agent session picks this up
 
-Start here, then run `git log --oneline -10` and `git status` to see what's changed since this was written. The prototype in the sibling `design_random_musings/` folder is the authoritative visual spec — compare any new page against it.
+Start here, then `git log --oneline -10` and `git status`. For Notion-related work, read `docs/notion-schema.md` first — it documents the exact property names the code reads by string. Renaming a property in Notion without updating `src/lib/notion.ts` will silently break things.

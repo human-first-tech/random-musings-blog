@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { PostCard } from "./PostCard";
-import { SectionLabel } from "./SectionLabel";
 import { getAllPosts } from "@/lib/posts";
 
-export function NotebookGrid() {
-  const all = getAllPosts();
+export async function NotebookGrid() {
+  const all = await getAllPosts();
   const preview = all.slice(0, 6);
 
   return (

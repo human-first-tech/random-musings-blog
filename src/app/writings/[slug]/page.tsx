@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { SubscribeSection } from "@/components/SubscribeSection";
+import { NotionRenderer } from "@/components/NotionRenderer";
 import {
   getAllPosts,
   getAdjacentPosts,
@@ -11,30 +12,44 @@ import {
   type Post,
 } from "@/lib/posts";
 
+// ISR: re-render at most every 60 seconds when traffic hits this page.
+// On-demand revalidation via /api/revalidate handles publish-time freshness.
+export const revalidate = 60;
+
+// Allow new slugs added in Notion after build to render on-demand.
+export const dynamicParams = true;
+
 type RouteParams = { slug: string };
 type Props = { params: Promise<RouteParams> };
 
-export function generateStaticParams(): RouteParams[] {
-  return getAllPosts().map((p) => ({ slug: p.slug }));
+export async function generateStaticParams(): Promise<RouteParams[]> {
+  const posts = await getAllPosts();
+  return posts.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
   if (!post) return { title: "Not found — Random Musings" };
   return {
     title: `${post.title} — Random Musings`,
     description: post.excerpt,
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      type: "article",
+      publishedTime: post.isoDate,
+    },
   };
 }
 
 export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
   if (!post) notFound();
 
-  const { prev, next } = getAdjacentPosts(slug);
-  const tag = post.tags[0];
+  const { prev, next } = await getAdjacentPosts(slug);
+  const tag = post.category;
 
   return (
     <>
@@ -69,7 +84,7 @@ export default async function ArticlePage({ params }: Props) {
 
             <div className="mb-12 h-px bg-rule" />
 
-            <ArticleBody content={post.content} />
+            <NotionRenderer blocks={post.blocks} />
 
             <ArticleNav prev={prev} next={next} />
           </div>
@@ -78,39 +93,6 @@ export default async function ArticlePage({ params }: Props) {
       </main>
       <Footer />
     </>
-  );
-}
-
-// Mirrors the prototype parser: paragraphs split on \n, with **bold** support
-// for either fully-bold lines or lines that open with **bold heading** + body.
-function ArticleBody({ content }: { content: string }) {
-  const paragraphs = content.split("\n").filter((l) => l.trim());
-  return (
-    <div className="max-w-[62ch] text-[1.05rem] font-light leading-[1.85] text-ink">
-      {paragraphs.map((para, i) => {
-        if (para.startsWith("**") && para.endsWith("**")) {
-          return (
-            <p key={i} className="mb-6">
-              <strong className="font-medium text-ink">{para.slice(2, -2)}</strong>
-            </p>
-          );
-        }
-        const match = para.match(/^\*\*(.+?)\*\*(.*)$/);
-        if (match) {
-          return (
-            <p key={i} className="mb-6">
-              <strong className="font-medium text-ink">{match[1]}</strong>
-              {match[2]}
-            </p>
-          );
-        }
-        return (
-          <p key={i} className="mb-6">
-            {para}
-          </p>
-        );
-      })}
-    </div>
   );
 }
 
