@@ -1,5 +1,12 @@
 # Deployment guide — Notion-as-CMS rollout
 
+> **Reference, since the initial deploy is done.** This was the runbook used
+> for the original cutover on 2026-04-26. All env vars are in Vercel, all
+> 26 articles are in Notion, and production is live.
+>
+> Use this guide if you need to: re-deploy from scratch, set up a staging
+> environment, or onboard a new contributor who needs the same env locally.
+
 End-to-end steps to take this branch from local clone → live on Vercel.
 
 ---

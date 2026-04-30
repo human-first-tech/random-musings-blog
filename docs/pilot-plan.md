@@ -1,5 +1,10 @@
 # Pilot rollout plan — 3 articles, then full backfill
 
+> **Historical, kept for reference.** This plan was executed on 2026-04-26.
+> All 26 articles are migrated and the site shipped to production.
+> Read this only if you need to understand the cutover sequence we used,
+> or if you're doing a similar migration on another project.
+
 A small-batch cutover that lets you validate the system end-to-end before
 moving all 26 articles. Total time: ~30 minutes of focused work.
 
