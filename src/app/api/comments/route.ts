@@ -39,12 +39,16 @@ export async function POST(request: NextRequest) {
   await createPendingComment(name, comment, slug);
 
   const notionUrl = `https://www.notion.so/${(process.env.NOTION_COMMENTS_DATABASE_ID ?? '').replace(/-/g, '')}`;
-  await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
-    to: process.env.DIMPY_EMAIL!,
-    subject: `New comment on "${postTitle}"`,
-    html: buildCommentNotificationHtml(postTitle, name, comment, notionUrl),
-  });
+  try {
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL!,
+      to: process.env.DIMPY_EMAIL!,
+      subject: `New comment on "${postTitle}"`,
+      html: buildCommentNotificationHtml(postTitle, name, comment, notionUrl),
+    });
+  } catch (err) {
+    console.error('[comments] Failed to send notification email:', err);
+  }
 
   return NextResponse.json({ ok: true });
 }
