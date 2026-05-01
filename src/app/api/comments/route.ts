@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sanitizeCommentInput, createPendingComment, getApprovedComments } from '@/lib/notion-comments';
 import { resend, buildCommentNotificationHtml } from '@/lib/resend';
 
-const SLUG_RE = /^[a-z0-9-]+$/;
+const SLUG_RE = /^[a-zA-Z0-9-]+$/;
 
 const rateMap = new Map<string, { count: number; resetAt: number }>();
 
