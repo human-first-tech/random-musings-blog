@@ -1,5 +1,14 @@
 import { Resend } from 'resend';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
+
+function he(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -10,7 +19,9 @@ export function generateUnsubToken(email: string): string {
 }
 
 export function verifyUnsubToken(email: string, token: string): boolean {
-  return token === generateUnsubToken(email);
+  const expected = generateUnsubToken(email);
+  if (token.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(token), Buffer.from(expected));
 }
 
 export function buildSubscriberEmailHtml(
@@ -28,9 +39,9 @@ export function buildSubscriberEmailHtml(
     Random <span style="color:#4f46e5">Musings</span>
   </p>
   <p style="font-family:system-ui,sans-serif;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;color:#4f46e5;margin:0 0 8px">New piece</p>
-  <h1 style="font-size:1.5rem;margin:0 0 16px;line-height:1.25;font-weight:500"><em>${title}</em></h1>
-  <p style="color:#555;line-height:1.75;margin:0 0 28px;font-size:0.95rem">${excerpt}</p>
-  <a href="${siteUrl}/writings/${slug}"
+  <h1 style="font-size:1.5rem;margin:0 0 16px;line-height:1.25;font-weight:500"><em>${he(title)}</em></h1>
+  <p style="color:#555;line-height:1.75;margin:0 0 28px;font-size:0.95rem">${he(excerpt)}</p>
+  <a href="${siteUrl}/writings/${encodeURIComponent(slug)}"
      style="display:inline-block;background:#4f46e5;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-family:system-ui,sans-serif;font-size:0.875rem;font-weight:500">
     Read the full piece →
   </a>
@@ -53,10 +64,10 @@ export function buildCommentNotificationHtml(
   <p style="font-size:1rem;font-weight:600;color:#4a4a4a;margin:0 0 20px">
     Random <span style="color:#4f46e5">Musings</span>
   </p>
-  <p style="margin:0 0 12px">New comment on <strong>${postTitle}</strong>:</p>
+  <p style="margin:0 0 12px">New comment on <strong>${he(postTitle)}</strong>:</p>
   <div style="background:#f7f7f7;border-radius:6px;padding:16px 20px;margin:0 0 24px">
-    <p style="margin:0 0 8px"><strong>Name:</strong> ${name}</p>
-    <p style="margin:0"><strong>Comment:</strong> ${comment}</p>
+    <p style="margin:0 0 8px"><strong>Name:</strong> ${he(name)}</p>
+    <p style="margin:0"><strong>Comment:</strong> ${he(comment)}</p>
   </div>
   <a href="${notionUrl}"
      style="display:inline-block;background:#4f46e5;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:0.875rem">
