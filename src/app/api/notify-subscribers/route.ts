@@ -6,11 +6,15 @@ import { resend, buildSubscriberEmailHtml } from '@/lib/resend';
 export async function POST(request: NextRequest) {
   const notion = new Client({ auth: process.env.NOTION_TOKEN });
   const secret = request.nextUrl.searchParams.get('secret');
-  const slug = request.nextUrl.searchParams.get('slug');
 
   if (!process.env.REVALIDATE_SECRET || secret !== process.env.REVALIDATE_SECRET) {
     return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
   }
+
+  // Notion's webhook UI sends slug in the request body; fallback to query param.
+  const body = await request.json().catch(() => null);
+  const slug = (body?.slug as string | undefined) ?? request.nextUrl.searchParams.get('slug');
+
   if (!slug) {
     return NextResponse.json({ ok: false, error: 'Missing slug.' }, { status: 400 });
   }
