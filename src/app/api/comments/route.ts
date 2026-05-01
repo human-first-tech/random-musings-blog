@@ -36,7 +36,23 @@ export async function POST(request: NextRequest) {
   if (!comment) return NextResponse.json({ ok: false, error: 'Comment is required.' }, { status: 400 });
   if (!slug || !SLUG_RE.test(slug)) return NextResponse.json({ ok: false, error: 'Invalid post.' }, { status: 400 });
 
-  await createPendingComment(name, comment, slug);
+  try {
+    await createPendingComment(name, comment, slug);
+  } catch (err: unknown) {
+    const isRateLimited =
+      typeof err === 'object' && err !== null && 'code' in err && err.code === 'rate_limited';
+    if (isRateLimited) {
+      return NextResponse.json(
+        { ok: false, error: 'The site is busy — please try again in a moment.' },
+        { status: 503 },
+      );
+    }
+    console.error('[comments] Failed to create comment in Notion:', err);
+    return NextResponse.json(
+      { ok: false, error: 'Could not save your comment. Please try again.' },
+      { status: 500 },
+    );
+  }
 
   const notionUrl = `https://www.notion.so/${(process.env.NOTION_COMMENTS_DATABASE_ID ?? '').replace(/-/g, '')}`;
   try {
