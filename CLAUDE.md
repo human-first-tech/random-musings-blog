@@ -65,9 +65,11 @@ The `Post` type and helper signatures match what was there before the CMS migrat
 
 1. **Share Notion DB with Dimpy.** Open the Writings database → Share → invite by email → permission **Can edit** (NOT Full access). Send her the writer workflow (see README §Writer workflow). Until this happens, only Johny can author content.
 2. **Wire the Notion automation** for instant publishing. Optional — current 60s ISR is fine for a personal blog. Steps: Notion → Writings DB → `+ New automation` → trigger when Status set to Published → action: POST to `https://www.d-island-girl.com/api/revalidate?secret=<REVALIDATE_SECRET>&slug={Slug}`.
-3. **Real subscribe backend.** `src/components/SubscribeSection.tsx`'s `handleSubmit` is a placeholder. Look for the `▼▼▼ REPLACE THIS BLOCK ▼▼▼` marker. Wire to Resend or Mailchimp.
+3. ✅ **Subscribe backend wired.** `POST /api/subscribe` → Resend Audiences. Unsubscribe via `GET /api/unsubscribe?email=...&token=...` (HMAC-gated). Subscriber broadcast on publish via `POST /api/notify-subscribers` (Notion automation + Notified checkbox guard).
 4. **Tag color rotation.** `PostCard.tsx`'s `CardTag` regex `/sage|nature|environment/` no longer matches any post (categories were consolidated). Currently all chips render in accent. To re-introduce visual variety, update the regex or move color decision into the data layer.
 5. **Notion image proxy.** None of the current posts have images, but Notion-hosted images use signed URLs that expire ~1hr. Once Dimpy starts including images, plan: proxy through `next/image` loader with a custom domain or move to a CDN.
+6. **Wire the notify-subscribers Notion automation.** In the Writings database, add a second automation: trigger when Status → Published → POST to `https://www.d-island-girl.com/api/notify-subscribers?secret=<REVALIDATE_SECRET>&slug={Slug}`. Separate from the revalidation automation.
+7. **Set Resend + comments env vars in Vercel.** Add `RESEND_API_KEY`, `RESEND_AUDIENCE_ID`, `RESEND_FROM_EMAIL`, `DIMPY_EMAIL`, `NOTION_COMMENTS_DATABASE_ID` to Vercel Production + Preview + Development.
 
 ### 🗑️ Cleanup candidates (deliberately left in repo)
 
