@@ -9,24 +9,26 @@ export function SubscribeSection() {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ───────────────────────────────────────────────
-  // TODO(user): implement the submit handler.
-  // See SubscribeSection.tsx — 5–10 lines in handleSubmit below.
-  // Decide: how strict is validation? do we call a real API yet
-  // (Mailchimp/Resend) or stub it? what copy shows on error?
-  // ───────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (status === 'submitting') return;
+    setStatus('submitting');
+    setErrorMsg(null);
 
-    // ▼▼▼ REPLACE THIS BLOCK ▼▼▼
-    // Placeholder so the UI is interactive while you author the real version.
-    if (!email.includes("@")) {
-      setStatus("error");
-      setErrorMsg("That doesn't look like an email.");
-      return;
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json().catch(() => ({ ok: false }));
+
+    if (!res.ok || !data.ok) {
+      setStatus('error');
+      setErrorMsg(data.error ?? 'Something went wrong — please try again.');
+    } else {
+      setStatus('success');
     }
-    setStatus("success");
-    // ▲▲▲ REPLACE THIS BLOCK ▲▲▲
   }
 
   const isError = status === "error";
