@@ -13,4 +13,7 @@ describe('sanitizeCommentInput', () => {
   it('passes clean input unchanged', () => {
     expect(sanitizeCommentInput('Hello world')).toBe('Hello world');
   });
+  it('collapses internal whitespace', () => {
+    expect(sanitizeCommentInput('hello  <b>  </b>  world')).toBe('hello world');
+  });
 });

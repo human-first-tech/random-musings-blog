@@ -2,12 +2,15 @@ import { Client } from '@notionhq/client';
 import type { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const DB = () => process.env.NOTION_COMMENTS_DATABASE_ID!;
 
 export type Comment = { name: string; comment: string; submittedAt: string };
 
 export function sanitizeCommentInput(str: string, maxLen = 1000): string {
-  return str.replace(/<[^>]*>/g, '').trim().slice(0, maxLen);
+  return str
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLen);
 }
 
 export async function createPendingComment(
@@ -15,8 +18,10 @@ export async function createPendingComment(
   comment: string,
   slug: string,
 ): Promise<void> {
+  const dbId = process.env.NOTION_COMMENTS_DATABASE_ID;
+  if (!dbId) throw new Error('Missing env var: NOTION_COMMENTS_DATABASE_ID');
   await notion.pages.create({
-    parent: { database_id: DB() },
+    parent: { database_id: dbId },
     properties: {
       Name: { title: [{ text: { content: name } }] },
       Comment: { rich_text: [{ text: { content: comment } }] },
@@ -28,8 +33,10 @@ export async function createPendingComment(
 }
 
 export async function getApprovedComments(slug: string): Promise<Comment[]> {
+  const dbId = process.env.NOTION_COMMENTS_DATABASE_ID;
+  if (!dbId) throw new Error('Missing env var: NOTION_COMMENTS_DATABASE_ID');
   const res = await notion.databases.query({
-    database_id: DB(),
+    database_id: dbId,
     filter: {
       and: [
         { property: 'Post Slug', rich_text: { equals: slug } },
