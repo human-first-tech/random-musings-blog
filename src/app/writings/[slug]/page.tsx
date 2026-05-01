@@ -11,6 +11,7 @@ import {
   getPostBySlug,
   type Post,
 } from "@/lib/posts";
+import { CommentsSection } from "@/components/CommentsSection";
 
 // ISR: re-render at most every 60 seconds when traffic hits this page.
 // On-demand revalidation via /api/revalidate handles publish-time freshness.
@@ -85,6 +86,8 @@ export default async function ArticlePage({ params }: Props) {
             <div className="mb-12 h-px bg-rule" />
 
             <NotionRenderer blocks={post.blocks} />
+
+            <CommentsSection slug={post.slug} postTitle={post.title} />
 
             <ArticleNav prev={prev} next={next} />
           </div>
