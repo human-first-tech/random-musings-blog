@@ -13,7 +13,7 @@ function checkRateLimit(ip: string): boolean {
     rateMap.set(ip, { count: 1, resetAt: now + 3_600_000 });
     return true;
   }
-  if (entry.count >= 10) return false;
+  if (entry.count >= 20) return false;
   entry.count++;
   return true;
 }
