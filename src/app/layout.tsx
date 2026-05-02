@@ -21,7 +21,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Random Musings — A personal journal",
   description:
-    "An introvert's unfiltered take on life, people, books, food, and the beautiful chaos of figuring it all out — one essay at a time.",
+    "An introvert's unfiltered take on life, people, books, food, and the beautiful chaos of figuring it all out — one story at a time.",
 };
 
 export default function RootLayout({

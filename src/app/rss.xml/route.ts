@@ -51,7 +51,7 @@ export async function GET() {
   <channel>
     <title>Random Musings</title>
     <link>${SITE_URL}</link>
-    <description>An introvert's unfiltered take on life, people, books, food, and the beautiful chaos of figuring it all out — one essay at a time.</description>
+    <description>An introvert's unfiltered take on life, people, books, food, and the beautiful chaos of figuring it all out — one story at a time.</description>
     <language>en-us</language>
     <atom:link href="${SITE_URL}/rss.xml" rel="self" type="application/rss+xml" />
     ${items}

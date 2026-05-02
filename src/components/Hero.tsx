@@ -14,7 +14,7 @@ export async function Hero() {
           <br />&amp; <em className="italic text-accent">random musings</em>
         </h1>
         <p className="mb-10 max-w-[560px] text-[clamp(1rem,2vw,1.2rem)] font-light leading-[1.7] text-ink-mid">
-          An introvert&apos;s unfiltered take on life, people, books, food, and the beautiful chaos of figuring it all out — one essay at a time.
+          An introvert&apos;s unfiltered take on life, people, books, food, and the beautiful chaos of figuring it all out — one story at a time.
         </p>
         <div className="flex flex-wrap gap-2">
           <HeroTag>{count} Pieces</HeroTag>
