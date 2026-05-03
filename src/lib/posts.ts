@@ -53,23 +53,30 @@ function formatDate(isoDate: string): string {
 }
 
 /**
- * Fetch raw posts + the body blocks for each, in parallel.
- * Memoized per-request via React cache so multiple components can call this
- * without duplicate API calls.
+ * Fetch raw posts + body blocks in batches of 3 with a short delay between
+ * batches. Notion's rate limit is 3 req/sec average — running all 26 posts
+ * in parallel reliably triggers it during builds.
  */
 const getAllPostsHydrated = cache(async (): Promise<Post[]> => {
   const raw = await fetchAllPostsFromNotion();
+  const results: Post[] = [];
+  const batchSize = 3;
 
-  // Hydrate every post with its body blocks (needed for search + render).
-  // Done in parallel; on a 26-post blog this is ~1 API request per post.
-  const hydrated = await Promise.all(
-    raw.map(async (p) => {
-      const blocks = await fetchBlocksForPost(p.pageId);
-      return rawToPost(p, blocks);
-    }),
-  );
+  for (let i = 0; i < raw.length; i += batchSize) {
+    const batch = raw.slice(i, i + batchSize);
+    const batchResults = await Promise.all(
+      batch.map(async (p) => {
+        const blocks = await fetchBlocksForPost(p.pageId);
+        return rawToPost(p, blocks);
+      }),
+    );
+    results.push(...batchResults);
+    if (i + batchSize < raw.length) {
+      await new Promise((r) => setTimeout(r, 350));
+    }
+  }
 
-  return hydrated;
+  return results;
 });
 
 function rawToPost(raw: RawPost, blocks: NotionBlock[]): Post {

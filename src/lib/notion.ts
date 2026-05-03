@@ -89,7 +89,8 @@ function getMultiSelect(page: PageObjectResponse, propName: string): string[] {
 function getDate(page: PageObjectResponse, propName: string): string {
   const prop = page.properties[propName];
   if (prop?.type === "date" && prop.date) {
-    return prop.date.start; // YYYY-MM-DD
+    // Notion may return a full datetime string — keep only the date part.
+    return prop.date.start.split("T")[0];
   }
   return "";
 }
