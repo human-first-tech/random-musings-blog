@@ -13,12 +13,15 @@ export async function POST(request: NextRequest) {
 
   // Notion's webhook UI sends slug as a full property object; handle both formats.
   const body = await request.json().catch(() => null);
+  console.log('[notify-subscribers] raw body:', JSON.stringify(body));
   const rawSlug = body?.slug;
   const slug: string | null =
     typeof rawSlug === 'string'
       ? rawSlug
       : rawSlug?.rich_text?.[0]?.plain_text ?? // Notion webhook format
         request.nextUrl.searchParams.get('slug');
+
+  console.log('[notify-subscribers] resolved slug:', slug);
 
   if (!slug) {
     return NextResponse.json({ ok: false, error: 'Missing slug.' }, { status: 400 });
