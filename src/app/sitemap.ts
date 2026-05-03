@@ -29,12 +29,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const articleEntries: MetadataRoute.Sitemap = posts.map((p) => ({
-    url: `${SITE_URL}/writings/${p.slug}`,
-    lastModified: new Date(`${p.isoDate}T00:00:00Z`),
-    changeFrequency: "monthly",
-    priority: 0.8,
-  }));
+  const articleEntries: MetadataRoute.Sitemap = posts.map((p) => {
+    const date = p.isoDate ? new Date(`${p.isoDate}T00:00:00Z`) : new Date();
+    return {
+      url: `${SITE_URL}/writings/${p.slug}`,
+      lastModified: isNaN(date.getTime()) ? new Date() : date,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    };
+  });
 
   return [...staticEntries, ...articleEntries];
 }
