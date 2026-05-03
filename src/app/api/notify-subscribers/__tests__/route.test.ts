@@ -4,25 +4,21 @@ process.env.RESEND_FROM_EMAIL = 'hello@d-island-girl.com';
 process.env.NOTION_DATABASE_ID = 'db-abc';
 
 const mockUpdate = jest.fn().mockResolvedValue({});
-
-const mockPage = {
-  id: 'page-abc',
-  object: 'page',
-  properties: {
-    Notified: { type: 'checkbox', checkbox: false },
-    Title: { type: 'title', title: [{ plain_text: 'Test Post' }] },
-    Excerpt: { type: 'rich_text', rich_text: [{ plain_text: 'An excerpt.' }] },
-  },
-};
-
 jest.mock('@notionhq/client', () => ({
   Client: jest.fn().mockImplementation(() => ({
     databases: {
-      query: jest.fn().mockResolvedValue({ results: [mockPage] }),
+      query: jest.fn().mockResolvedValue({
+        results: [{ id: 'page-abc', properties: { Notified: { type: 'checkbox', checkbox: false } } }],
+      }),
     },
     pages: { update: mockUpdate },
   })),
-  isFullPage: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('@/lib/posts', () => ({
+  getPostBySlug: jest.fn().mockResolvedValue({
+    title: 'Test Post', excerpt: 'An excerpt.', slug: 'test-post', isoDate: '2024-01-01',
+  }),
 }));
 
 const mockSend = jest.fn().mockResolvedValue({ data: {}, error: null });
@@ -54,12 +50,9 @@ describe('POST /api/notify-subscribers', () => {
     expect((await POST(make('wrong', 'test-post'))).status).toBe(401);
   });
 
-  it('returns 404 when post not found in Notion', async () => {
-    const { Client } = jest.requireMock('@notionhq/client');
-    Client.mockImplementationOnce(() => ({
-      databases: { query: jest.fn().mockResolvedValue({ results: [] }) },
-      pages: { update: mockUpdate },
-    }));
+  it('returns 404 when post not found', async () => {
+    const { getPostBySlug } = jest.requireMock('@/lib/posts');
+    getPostBySlug.mockResolvedValueOnce(undefined);
     expect((await POST(make('test-secret', 'missing'))).status).toBe(404);
   });
 
@@ -76,7 +69,7 @@ describe('POST /api/notify-subscribers', () => {
     Client.mockImplementationOnce(() => ({
       databases: {
         query: jest.fn().mockResolvedValue({
-          results: [{ ...mockPage, properties: { ...mockPage.properties, Notified: { type: 'checkbox', checkbox: true } } }],
+          results: [{ id: 'page-abc', properties: { Notified: { type: 'checkbox', checkbox: true } } }],
         }),
       },
       pages: { update: mockUpdate },

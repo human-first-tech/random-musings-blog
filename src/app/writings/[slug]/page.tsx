@@ -24,9 +24,7 @@ type RouteParams = { slug: string };
 type Props = { params: Promise<RouteParams> };
 
 export async function generateStaticParams(): Promise<RouteParams[]> {
-  // Use lightweight metadata fetch — no blocks needed for slug generation.
-  const { fetchAllPostsFromNotion } = await import("@/lib/notion");
-  const posts = await fetchAllPostsFromNotion();
+  const posts = await getAllPosts();
   return posts.map((p) => ({ slug: p.slug }));
 }
 
