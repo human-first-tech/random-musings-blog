@@ -177,6 +177,27 @@ export const fetchAllPostsFromNotion = cache(async (): Promise<RawPost[]> => {
 });
 
 /**
+ * Fetch a single Published post by its slug.
+ * Used by article pages so they don't have to fetch all 26 posts during build.
+ */
+export const fetchPostBySlug = cache(
+  async (slug: string): Promise<RawPost | null> => {
+    const res = await notion.databases.query({
+      database_id: NOTION_DATABASE_ID!,
+      filter: {
+        and: [
+          { property: "Slug", rich_text: { equals: slug } },
+          { property: "Status", select: { equals: "Published" } },
+        ],
+      },
+      page_size: 1,
+    });
+    const page = res.results.find(isFullPage);
+    return page ? pageToRawPost(page) ?? null : null;
+  },
+);
+
+/**
  * Fetch the block tree for a single Notion page.
  * Recursively expands children for blocks that have them
  * (e.g. nested lists, callouts with body content).

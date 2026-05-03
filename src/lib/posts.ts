@@ -10,6 +10,7 @@
 import { cache } from "react";
 import {
   fetchAllPostsFromNotion,
+  fetchPostBySlug,
   fetchBlocksForPost,
   blocksToPlainText,
   type NotionBlock,
@@ -53,26 +54,20 @@ function formatDate(isoDate: string): string {
 }
 
 /**
- * Fetch raw posts + body blocks in batches of 3 with a short delay between
- * batches. Notion's rate limit is 3 req/sec average — running all 26 posts
- * in parallel reliably triggers it during builds.
+ * Fetch raw posts + body blocks sequentially with a 400ms delay between each.
+ * Notion's rate limit is 3 req/sec average. Parallel fetching during builds
+ * reliably triggers it — sequential fetching keeps us well within the limit.
+ * Build adds ~10s for 26 posts; acceptable for a personal blog.
  */
 const getAllPostsHydrated = cache(async (): Promise<Post[]> => {
   const raw = await fetchAllPostsFromNotion();
   const results: Post[] = [];
-  const batchSize = 3;
 
-  for (let i = 0; i < raw.length; i += batchSize) {
-    const batch = raw.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map(async (p) => {
-        const blocks = await fetchBlocksForPost(p.pageId);
-        return rawToPost(p, blocks);
-      }),
-    );
-    results.push(...batchResults);
-    if (i + batchSize < raw.length) {
-      await new Promise((r) => setTimeout(r, 350));
+  for (let i = 0; i < raw.length; i++) {
+    const blocks = await fetchBlocksForPost(raw[i].pageId);
+    results.push(rawToPost(raw[i], blocks));
+    if (i < raw.length - 1) {
+      await new Promise((r) => setTimeout(r, 400));
     }
   }
 
@@ -104,8 +99,10 @@ export async function getAllPosts(): Promise<Post[]> {
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | undefined> {
-  const all = await getAllPostsHydrated();
-  return all.find((p) => p.slug === slug);
+  const raw = await fetchPostBySlug(slug);
+  if (!raw) return undefined;
+  const blocks = await fetchBlocksForPost(raw.pageId);
+  return rawToPost(raw, blocks);
 }
 
 export async function getFeaturedPosts(n = 3): Promise<Post[]> {
