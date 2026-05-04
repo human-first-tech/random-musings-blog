@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Client } from '@notionhq/client';
-import { getPostBySlug } from '@/lib/posts';
+import { Client, isFullPage } from '@notionhq/client';
 import { resend, buildSubscriberEmailHtml } from '@/lib/resend';
 
 export async function POST(request: NextRequest) {
@@ -25,10 +24,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Missing slug.' }, { status: 400 });
   }
 
-  const post = await getPostBySlug(slug);
-  if (!post) return NextResponse.json({ ok: false, error: 'Post not found.' }, { status: 404 });
-
-  // Find the Writings page to check/set Notified.
+  // Query Notion directly for this one post — avoids loading all 26 posts
+  // which would exceed Notion's timeout for webhook responses.
   const queryRes = await notion.databases.query({
     database_id: process.env.NOTION_DATABASE_ID!,
     filter: { property: 'Slug', rich_text: { equals: slug } },
@@ -36,20 +33,35 @@ export async function POST(request: NextRequest) {
   });
 
   const page = queryRes.results[0];
-  if (!page) return NextResponse.json({ ok: false, error: 'Page not found.' }, { status: 404 });
+  if (!page || !isFullPage(page)) {
+    return NextResponse.json({ ok: false, error: 'Post not found.' }, { status: 404 });
+  }
 
   // Duplicate-send guard.
-  const notifiedProp = 'properties' in page ? page.properties['Notified'] : null;
+  const notifiedProp = page.properties['Notified'];
   if (notifiedProp?.type === 'checkbox' && notifiedProp.checkbox) {
     return NextResponse.json({ ok: true, skipped: true });
   }
+
+  // Extract title and excerpt directly from the page properties.
+  const titleProp = page.properties['Title'];
+  const excerptProp = page.properties['Excerpt'];
+  const title =
+    titleProp?.type === 'title'
+      ? titleProp.title.map((t) => t.plain_text).join('')
+      : slug;
+  const excerpt =
+    excerptProp?.type === 'rich_text'
+      ? excerptProp.rich_text.map((t) => t.plain_text).join('')
+      : '';
 
   // Fetch active subscribers.
   const { data: contactsData } = await resend.contacts.list({
     audienceId: process.env.RESEND_AUDIENCE_ID!,
   });
-  const active = ((contactsData as { data?: { id: string; email: string; unsubscribed: boolean }[] })?.data ?? [])
-    .filter((c) => !c.unsubscribed);
+  const active = (
+    (contactsData as { data?: { id: string; email: string; unsubscribed: boolean }[] })?.data ?? []
+  ).filter((c) => !c.unsubscribed);
 
   // Send individual emails with per-subscriber unsubscribe links.
   await Promise.all(
@@ -57,8 +69,8 @@ export async function POST(request: NextRequest) {
       resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL!,
         to: c.email,
-        subject: `New on Random Musings — ${post.title}`,
-        html: buildSubscriberEmailHtml(post.title, post.excerpt, post.slug, c.email),
+        subject: `New on Random Musings — ${title}`,
+        html: buildSubscriberEmailHtml(title, excerpt, slug, c.email),
       }),
     ),
   );
