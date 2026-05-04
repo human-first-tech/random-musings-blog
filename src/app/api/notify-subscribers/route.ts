@@ -10,15 +10,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
   }
 
-  // Notion sends the Slug property as a rich_text object, not a plain string.
-  // Handle both formats (plain string from curl tests + Notion webhook object).
+  // Notion wraps the payload in a `data` object with full page properties.
+  // Also handle plain string (curl tests) and query param fallback.
   const body = await request.json().catch(() => null);
-  const rawSlug = body?.slug ?? body?.Slug;
+  const notionSlugProp = body?.data?.properties?.Slug;
   const slug: string | null =
-    typeof rawSlug === 'string'
-      ? rawSlug
-      : rawSlug?.rich_text?.[0]?.plain_text ??
-        request.nextUrl.searchParams.get('slug');
+    request.nextUrl.searchParams.get('slug') ??
+    (typeof body?.slug === 'string' ? body.slug : null) ??
+    (notionSlugProp?.rich_text?.map((t: { plain_text: string }) => t.plain_text).join('') || null);
 
   console.log('[notify] raw body:', JSON.stringify(body));
   console.log('[notify] slug:', slug);
