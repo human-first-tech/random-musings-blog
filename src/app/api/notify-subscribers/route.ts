@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
       : rawSlug?.rich_text?.[0]?.plain_text ??
         request.nextUrl.searchParams.get('slug');
 
+  console.log('[notify] raw body:', JSON.stringify(body));
   console.log('[notify] slug:', slug);
 
   if (!slug) {
