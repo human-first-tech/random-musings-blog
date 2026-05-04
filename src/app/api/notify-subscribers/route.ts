@@ -20,26 +20,32 @@ export async function POST(request: NextRequest) {
       : rawSlug?.rich_text?.[0]?.plain_text ??
         request.nextUrl.searchParams.get('slug');
 
+  console.log('[notify] slug:', slug);
+
   if (!slug) {
     return NextResponse.json({ ok: false, error: 'Missing slug.' }, { status: 400 });
   }
 
-  // Query Notion directly for this one post — avoids loading all 26 posts
-  // which would exceed Notion's timeout for webhook responses.
+  // Query Notion directly for this one post.
   const queryRes = await notion.databases.query({
     database_id: process.env.NOTION_DATABASE_ID!,
     filter: { property: 'Slug', rich_text: { equals: slug } },
     page_size: 1,
   });
 
+  console.log('[notify] pages found:', queryRes.results.length);
+
   const page = queryRes.results[0];
   if (!page || !isFullPage(page)) {
+    console.log('[notify] post not found for slug:', slug);
     return NextResponse.json({ ok: false, error: 'Post not found.' }, { status: 404 });
   }
 
   // Duplicate-send guard.
   const notifiedProp = page.properties['Notified'];
-  if (notifiedProp?.type === 'checkbox' && notifiedProp.checkbox) {
+  const alreadyNotified = notifiedProp?.type === 'checkbox' && notifiedProp.checkbox;
+  console.log('[notify] already notified:', alreadyNotified);
+  if (alreadyNotified) {
     return NextResponse.json({ ok: true, skipped: true });
   }
 
@@ -63,6 +69,8 @@ export async function POST(request: NextRequest) {
     (contactsData as { data?: { id: string; email: string; unsubscribed: boolean }[] })?.data ?? []
   ).filter((c) => !c.unsubscribed);
 
+  console.log('[notify] sending to', active.length, 'subscribers');
+
   // Send individual emails with per-subscriber unsubscribe links.
   await Promise.all(
     active.map((c) =>
@@ -78,5 +86,6 @@ export async function POST(request: NextRequest) {
   // Mark as notified — prevents duplicate sends on re-publish.
   await notion.pages.update({ page_id: page.id, properties: { Notified: { checkbox: true } } });
 
+  console.log('[notify] done, sent:', active.length);
   return NextResponse.json({ ok: true, sent: true, count: active.length });
 }
